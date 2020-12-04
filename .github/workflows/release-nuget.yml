@@ -47,6 +47,7 @@ jobs:
 
     - name: Update Project Metadata
       run: |
+        echo "Project File: $($env:PROJECT_MAIN)"
         [xml]$xml = Get-Content $env:PROJECT_MAIN
         #
         # Set Company to REPOR_OWNER so that forks have a unique Company name
@@ -82,7 +83,8 @@ jobs:
         
     - name: Extract Project Metadata
       run: |
-        [xml]$xml = Get-Content $env:PROJECT_MAIN;
+        echo "Project File: $($env:PROJECT_MAIN)"
+        [xml]$xml = Get-Content $env:PROJECT_MAIN
         $val = $xml.SelectNodes('//PropertyGroup/AssemblyName') | Select-Object -Expand '#text'
         echo "ASSEMBLY_NAME: $($val)"
         echo "::set-env name=ASSEMBLY_NAME::$($val)"
