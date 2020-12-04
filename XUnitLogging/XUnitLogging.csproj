@@ -16,15 +16,19 @@
     <Description>ILoggingProvider &amp; ILogger to wrap ITestOutputHelper in xUnit .Net testing framework</Description>
     <EnableNETAnalyzers>true</EnableNETAnalyzers>
     <PackageRequireLicenseAcceptance>true</PackageRequireLicenseAcceptance>
+    <Nullable>warnings</Nullable>
+    <SignAssembly>false</SignAssembly>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
     <DefineConstants>DEBUG;TRACE</DefineConstants>
-    <DocumentationFile>C:\Repos\github\tsh.xunit.logging\XUnitLogging\XUnitLogging.xml</DocumentationFile>
+    <DebugType>portable</DebugType>
+    <DebugSymbols>true</DebugSymbols>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|AnyCPU'">
-    <DocumentationFile>C:\Repos\github\tsh.xunit.logging\XUnitLogging\XUnitLogging.xml</DocumentationFile>
+    <DebugType>portable</DebugType>
+    <DebugSymbols>true</DebugSymbols>
   </PropertyGroup>
 
   <ItemGroup>
