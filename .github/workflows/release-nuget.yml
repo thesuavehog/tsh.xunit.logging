@@ -112,7 +112,7 @@ jobs:
       run: |
         echo "Project File: ./$($env:PROJECT_MAIN)"
         [xml]$xml = Get-Content ./$env:PROJECT_MAIN
-        $val = $xml.Project.PropertyGroup[0].AssemblyName
+        $val = $xml.Project.PropertyGroup[0].PackageId
         echo "ASSEMBLY_NAME: $($val)"
         echo "::set-env name=ASSEMBLY_NAME::$($val)"
         $val = $xml.Project.PropertyGroup[0].Version
@@ -141,7 +141,7 @@ jobs:
         if-no-files-found: error
     
     - name: Package
-      run: dotnet pack --include-source --include-symbols --configuration $env:BUILD_CONFIGURATION $env:PROJECT_MAIN --verbosity normal
+      run: dotnet pack --include-source --include-symbols -p:SymbolPackageFormat=snupkg --configuration $env:BUILD_CONFIGURATION $env:PROJECT_MAIN --verbosity normal
     
     - name: Upload NuGet Package Artifact
       uses: actions/upload-artifact@v2.1.3
