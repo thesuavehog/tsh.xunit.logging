@@ -1,3 +1,7 @@
+![ Debug ](https://github.com/thesuavehog/tsh.xunit.logging/workflows/Debug/badge.svg?branch=main)
+![ Release ](https://github.com/thesuavehog/tsh.xunit.logging/workflows/Release/badge.svg?branch=release)
+
+
 # xUnit ILogger
 This library is a relatively simple wrapper for the `ITestOutputHelper` provided by xUnit. 
 When doing integration tests, often the system logs to `ILogger` instances created via Dependency Injection. 
