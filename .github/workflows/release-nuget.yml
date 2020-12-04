@@ -49,34 +49,61 @@ jobs:
       run: |
         echo "Project File: ./$($env:PROJECT_MAIN)"
         [xml]$xml = Get-Content ./$env:PROJECT_MAIN
-        #
+
         # Set Company to REPOR_OWNER so that forks have a unique Company name
-        $xml.SelectNodes("//PropertyGroup/Company") | % { $_."#text" = $env:REPO_OWNER }
-        echo "Company: $($env:REPO_OWNER)"
+        $xml.SelectNodes("//Project/PropertyGroup/Company") | % { $_."#text" = $env:REPO_OWNER }
+        echo "Company: $($xml.SelectNodes("//Project/PropertyGroup/Company")."#text")"
+
         #
         # Set Repository Url so that source debugging points back to the right git repo
-        $xml.SelectNodes("//PropertyGroup/RepositoryUrl") | % { $_."#text" = $env:REPO_URL }
-        echo "RepositoryUrl: $($env:REPO_URL)"
+        $xml.SelectNodes("//Project/PropertyGroup/RepositoryUrl") | % { $_."#text" = $env:REPO_URL }
+        echo "RepositoryUrl: $($xml.SelectNodes("//Project/PropertyGroup/RepositoryUrl")."#text")"
+
         #
         # Set Project Url so that it's clear in NuGet properties this is either the root or a fork
-        $xml.SelectNodes("//PropertyGroup/PackageProjectUrl") | % { $_."#text" = $env:PROJECT_URL }
-        echo "PackageProjectUrl: $($env:PROJECT_URL)"
+        $xml.SelectNodes("//Project/PropertyGroup/PackageProjectUrl") | % { $_."#text" = $env:PROJECT_URL }
+        echo "PackageProjectUrl: $($xml.SelectNodes("//Project/PropertyGroup/PackageProjectUrl")."#text")"
+
         #
         # Append the build number to the Assembly Version
-        $version = "$($xml.SelectNodes('//PropertyGroup/Version').'#text').$($env:GITHUB_RUN_NUMBER)"
-        if ($version -eq '') { Write-Error "Missing Version Number" }
+        if (-not $xml.Project.PropertyGroup[0].Version -or $xml.Project.PropertyGroup[0].Version -eq "") {
+            Write-Warning "Missing Version Number. Setting Default: 0.0.0"
+            $versionNode = $xml.SelectNodes('//Project/PropertyGroup')[0].AppendChild($xml.CreateElement("Version"))
+            $xml.Project.PropertyGroup[0].Version = '0.0.0'
+        }
+        $version = "$($xml.Project.PropertyGroup[0].Version).$($env:GITHUB_RUN_NUMBER)"
+        if (-not $version -or $version -eq '' -or $version.EndsWith('.')) {
+            Write-Error "Missing or Improper Version Number"
+            Write-Error "   Project File: $($xml.Project.PropertyGroup[0].Version)"
+            Write-Error "   GITHUB_RUN_NUMBER: $($env:GITHUB_RUN_NUMBER)"
+            exit
+        }
+
         #
         # Packaging (NuGet) Version (x.x.x.x[-beta])
-        $xml.SelectNodes("//PropertyGroup/Version") | % { $_."#text" = "$($version)-beta" }
-        echo "Version: $($xml.SelectNodes('//PropertyGroup/Version').'#text')"
-        $xml.SelectNodes("//PropertyGroup/PackageVersion") | % { $_."#text" = "$($version)-beta" }
-        echo "PackageVersion: $($xml.SelectNodes('//PropertyGroup/PackageVersion').'#text')"
+        $xml.Project.PropertyGroup[0].Version = "$($version)-beta"
+        echo "Version: $($xml.Project.PropertyGroup[0].Version)"
+
+        if (-not $xml.Project.PropertyGroup[0].PackageVersion -or $xml.Project.PropertyGroup[0].PackageVersion -eq "") {
+            $versionNode = $xml.SelectNodes('//Project/PropertyGroup')[0].AppendChild($xml.CreateElement("PackageVersion"))
+        }
+        $xml.Project.PropertyGroup[0].PackageVersion = "$($version)-beta"
+        echo "PackageVersion: $($xml.Project.PropertyGroup[0].PackageVersion)"
+        
         #
         # Assembly Version (x.x.x.x)
-        $xml.SelectNodes("//PropertyGroup/AssemblyVersion") | % { $_."#text" = $version }
-        echo "AssemblyVersion: $($xml.SelectNodes('//PropertyGroup/AssemblyVersion').'#text')"
-        $xml.SelectNodes("//PropertyGroup/AssemblyFileVersion") | % { $_."#text" = $version }
-        echo "AssemblyFileVersion: $($xml.SelectNodes('//PropertyGroup/AssemblyFileVersion').'#text')"
+        if (-not $xml.Project.PropertyGroup[0].AssemblyVersion -or $xml.Project.PropertyGroup[0].AssemblyVersion -eq "") {
+            $versionNode = $xml.SelectNodes('//Project/PropertyGroup')[0].AppendChild($xml.CreateElement("AssemblyVersion"))
+        }
+        $xml.Project.PropertyGroup[0].AssemblyVersion = $version
+        echo "AssemblyVersion: $($xml.Project.PropertyGroup[0].AssemblyVersion)"
+
+        if (-not $xml.Project.PropertyGroup[0].AssemblyFileVersion -or $xml.Project.PropertyGroup[0].AssemblyFileVersion -eq "") {
+            $versionNode = $xml.SelectNodes('//Project/PropertyGroup')[0].AppendChild($xml.CreateElement("AssemblyFileVersion"))
+        }
+        $xml.Project.PropertyGroup[0].AssemblyFileVersion = $version
+        echo "AssemblyFileVersion: $($xml.Project.PropertyGroup[0].AssemblyFileVersion)"
+        
         # 
         # Save Updated .csproj File
         $xml.Save($env:PROJECT_MAIN)
@@ -85,10 +112,10 @@ jobs:
       run: |
         echo "Project File: ./$($env:PROJECT_MAIN)"
         [xml]$xml = Get-Content ./$env:PROJECT_MAIN
-        $val = $xml.SelectNodes('//PropertyGroup/AssemblyName') | Select-Object -Expand '#text'
+        $val = $xml.Project.PropertyGroup[0].AssemblyName
         echo "ASSEMBLY_NAME: $($val)"
         echo "::set-env name=ASSEMBLY_NAME::$($val)"
-        $val = $xml.SelectNodes('//PropertyGroup/Version') | Select-Object -Expand '#text'
+        $val = $xml.Project.PropertyGroup[0].Version
         echo "NUGET_VERSION: $($val)"
         echo "::set-env name=NUGET_VERSION::$($val)"
         $val = "$($env:GITHUB_REPOSITORY)".Split('/',2)[1]
