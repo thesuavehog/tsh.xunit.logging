@@ -12,7 +12,7 @@ provider therein.
 
 **Example:**
 
-```c-sharp
+```csharp
 public class TestBase {
         protected readonly ITestOutputHelper output;
         protected readonly TestServer server;
@@ -39,8 +39,8 @@ loaded up confgiuration, you can pass it in the constructor.
 
 **Example:**
 
+_appsettings.Tests.json_
 ```json
-appsettings.Tests.json:
 {
   "Logging": {
     "LogLevel": {
@@ -55,8 +55,8 @@ appsettings.Tests.json:
   }
 }
 ```
-
-```c-sharp
+Test class:
+```csharp
 public class TestBase {
         protected readonly ITestOutputHelper output;
         protected readonly TestServer server;
