@@ -63,9 +63,8 @@ jobs:
         #
         # Append the build number to the Assembly Version
         if (-not $xml.Project.PropertyGroup[0].Version -or $xml.Project.PropertyGroup[0].Version -eq "") {
-            Write-Warning "Missing Version Number. Setting Default: 0.0.0"
-            $versionNode = $xml.SelectNodes('//Project/PropertyGroup')[0].AppendChild($xml.CreateElement("Version"))
-            $xml.Project.PropertyGroup[0].Version = '0.0.0'
+            Write-Error "Missing Version Number from Project/PropertyGroup/Version"
+            exit
         }
         $version = "$($xml.Project.PropertyGroup[0].Version).$($env:GITHUB_RUN_NUMBER)"
         if (-not $version -or $version -eq '' -or $version.EndsWith('.')) {
