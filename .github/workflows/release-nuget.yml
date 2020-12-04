@@ -5,6 +5,9 @@ on:
     branches: [ release ]
   pull_request:
     branches: [ release ]
+  workflow_dispatch:
+  pull_request_target:
+    branches: [ main ]
 
 env:
   # Typically: Debug | Release - this value must be setup in the .sproj file that is being built
