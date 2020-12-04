@@ -10,6 +10,7 @@ on:
     branches: [ main ]
 
 env:
+  ACTIONS_ALLOW_UNSECURE_COMMANDS: true
   # Typically: Debug | Release - this value must be setup in the .sproj file that is being built
   BUILD_CONFIGURATION: Release
   PROJECT_BIN: XUnitLogging/bin
