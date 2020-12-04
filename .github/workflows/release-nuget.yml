@@ -22,21 +22,9 @@ env:
   
 jobs:
   
-  #env-setup:
-    #runs-on: windows-latest
-    #steps:
-      #- name: Setup MSBuild
-      #  uses: microsoft/setup-msbuild@v1.0.1
-      #- name: Setup .NET Core v3.1
-      #  uses: actions/setup-dotnet@v1
-      #  with:
-      #    dotnet-version: '3.1.x'
-          
-  build:
-    #needs: [env-setup]
+  env-setup:
     runs-on: windows-latest
     steps:
-      
     - name: Checkout
       uses: actions/checkout@v2.3.2
 
@@ -44,7 +32,11 @@ jobs:
       uses: actions/setup-dotnet@v1
       with:
         dotnet-version: '3.1.x'
-
+  
+  update-metadata:
+    needs: [env-setup]
+    runs-on: windows-latest
+    steps:
     - name: Update Project Metadata
       run: |
         echo "Project File: ./$($env:PROJECT_MAIN)"
@@ -120,6 +112,11 @@ jobs:
         echo "::set-env name=NUGET_VERSION::$($val)"
         $val = "$($env:GITHUB_REPOSITORY)".Split('/',2)[1]
         echo "::set-env name=PROJECT_NAME::$($val)"
+
+  build:
+    needs: [env-setup, update-metadata]
+    runs-on: windows-latest
+    steps:
         
     - name: Install dependencies
       run: dotnet restore
@@ -139,7 +136,11 @@ jobs:
         path: ${{ env.PROJECT_BIN }}/${{ env.BUILD_CONFIGURATION }}/netstandard2.1/**/*
         # The desired behavior if no files are found using the provided path.
         if-no-files-found: error
-    
+  
+  package:
+    needs: [build]
+    runs-on: windows-latest
+    steps:
     - name: Package
       run: dotnet pack --include-source --include-symbols -p:SymbolPackageFormat=snupkg --configuration $env:BUILD_CONFIGURATION $env:PROJECT_MAIN --verbosity normal
     
@@ -152,7 +153,11 @@ jobs:
         path: ${{ env.PROJECT_BIN }}/${{ env.BUILD_CONFIGURATION }}/*.nupkg
         # The desired behavior if no files are found using the provided path.
         if-no-files-found: error
-          
+
+  publish:
+    needs: [package]
+    runs-on: windows-latest
+    steps:
     - name: Publish to Github Packages
       # NOTE: *.nupkg does not work when pushing
       run: |
