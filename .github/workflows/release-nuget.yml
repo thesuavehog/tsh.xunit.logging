@@ -1,4 +1,4 @@
-name: .NET Core
+name: Publish to Nuget
 
 on:
   push:
@@ -6,30 +6,128 @@ on:
   pull_request:
     branches: [ release ]
 
+env:
+  # Typically: Debug | Release - this value must be setup in the .sproj file that is being built
+  BUILD_CONFIGURATION: Release
+  PROJECT_BIN: XUnitLogging/bin
+  PROJECT_MAIN: XUnitLogging/XUnitLogging.csproj
+  PROJECT_URL: https://github.com/${{ github.repository }}
+  REPO_URL: https://github.com/${{ github.repository }}.git
+  REPO_OWNER: ${{ github.repository_owner }}
+  NUGET_SOURCE: https://nuget.pkg.github.com/${{ github.repository_owner }}/index.json
+  
 jobs:
-  build:
-    #runs-on: ubuntu-latest
+  
+  env-setup:
     runs-on: windows-latest
-
     steps:
-    - uses: actions/checkout@v2
-    - name: Setup .NET Core
-      uses: actions/setup-dotnet@v1
-      with:
-        dotnet-version: 3.1.301
+      - name: Setup MSBuild
+        uses: microsoft/setup-msbuild@v1.0.1
+      - name: Setup .NET Core v3.1
+        uses: actions/setup-dotnet@v1.6.0
+        with:
+          dotnet-version: 3.1.x
+          
+  build:
+    needs: [env-setup]
+    runs-on: windows-latest
+    steps:
+      
+    - name: Checkout
+      uses: actions/checkout@v2.3.2
+      
+    - name: Update Project Metadata
+      run: |
+        [xml]$xml = Get-Content $env:PROJECT_MAIN
+        #
+        # Set Company to REPOR_OWNER so that forks have a unique Company name
+        $xml.SelectNodes("//PropertyGroup/Company") | % { $_."#text" = $env:REPO_OWNER }
+        echo "Company: $($env:REPO_OWNER)"
+        #
+        # Set Repository Url so that source debugging points back to the right git repo
+        $xml.SelectNodes("//PropertyGroup/RepositoryUrl") | % { $_."#text" = $env:REPO_URL }
+        echo "RepositoryUrl: $($env:REPO_URL)"
+        #
+        # Set Project Url so that it's clear in NuGet properties this is either the root or a fork
+        $xml.SelectNodes("//PropertyGroup/PackageProjectUrl") | % { $_."#text" = $env:PROJECT_URL }
+        echo "PackageProjectUrl: $($env:PROJECT_URL)"
+        #
+        # Append the build number to the Assembly Version
+        $version = "$($xml.SelectNodes('//PropertyGroup/Version').'#text').$($env:GITHUB_RUN_NUMBER)"
+        if ($version -eq '') { Write-Error "Missing Version Number" }
+        #
+        # Packaging (NuGet) Version (x.x.x.x[-beta])
+        $xml.SelectNodes("//PropertyGroup/Version") | % { $_."#text" = "$($version)-beta" }
+        echo "Version: $($xml.SelectNodes('//PropertyGroup/Version').'#text')"
+        $xml.SelectNodes("//PropertyGroup/PackageVersion") | % { $_."#text" = "$($version)-beta" }
+        echo "PackageVersion: $($xml.SelectNodes('//PropertyGroup/PackageVersion').'#text')"
+        #
+        # Assembly Version (x.x.x.x)
+        $xml.SelectNodes("//PropertyGroup/AssemblyVersion") | % { $_."#text" = $version }
+        echo "AssemblyVersion: $($xml.SelectNodes('//PropertyGroup/AssemblyVersion').'#text')"
+        $xml.SelectNodes("//PropertyGroup/AssemblyFileVersion") | % { $_."#text" = $version }
+        echo "AssemblyFileVersion: $($xml.SelectNodes('//PropertyGroup/AssemblyFileVersion').'#text')"
+        # 
+        # Save Updated .csproj File
+        $xml.Save($env:PROJECT_MAIN)
+        
+    - name: Extract Project Metadata
+      run: |
+        [xml]$xml = Get-Content $env:PROJECT_MAIN;
+        $val = $xml.SelectNodes('//PropertyGroup/AssemblyName') | Select-Object -Expand '#text'
+        echo "ASSEMBLY_NAME: $($val)"
+        echo "::set-env name=ASSEMBLY_NAME::$($val)"
+        $val = $xml.SelectNodes('//PropertyGroup/Version') | Select-Object -Expand '#text'
+        echo "NUGET_VERSION: $($val)"
+        echo "::set-env name=NUGET_VERSION::$($val)"
+        $val = "$($env:GITHUB_REPOSITORY)".Split('/',2)[1]
+        echo "::set-env name=PROJECT_NAME::$($val)"
+        
     - name: Install dependencies
       run: dotnet restore
+      
     - name: Build
-      run: dotnet build --configuration Release --no-restore
+      run: dotnet build --configuration $env:BUILD_CONFIGURATION --no-restore
+    
     #- name: Test
     #  run: dotnet test --no-restore --verbosity normal
-    - name: Publish NuGet
+    
+    - name: Upload Build Output Artifact
+      uses: actions/upload-artifact@v2.1.3
+      with:
+        # Artifact name
+        name: ${{ env.PROJECT_NAME }}.${{ env.BUILD_CONFIGURATION }}
+        # A file, directory or wildcard pattern that describes what to upload
+        path: ${{ env.PROJECT_BIN }}/${{ env.BUILD_CONFIGURATION }}/netstandard2.1/**/*
+        # The desired behavior if no files are found using the provided path.
+        if-no-files-found: error
+    
+    - name: Package
+      run: dotnet pack --include-source --include-symbols --configuration $env:BUILD_CONFIGURATION $env:PROJECT_MAIN --verbosity normal
+    
+    - name: Upload NuGet Package Artifact
+      uses: actions/upload-artifact@v2.1.3
+      with:
+        # Artifact name
+        name: ${{ env.PROJECT_NAME }}.${{ env.BUILD_CONFIGURATION }}.NuGet
+        # A file, directory or wildcard pattern that describes what to upload
+        path: ${{ env.PROJECT_BIN }}/${{ env.BUILD_CONFIGURATION }}/*.nupkg
+        # The desired behavior if no files are found using the provided path.
+        if-no-files-found: error
+          
+    - name: Publish to Github Packages
+      # NOTE: *.nupkg does not work when pushing
+      run: |
+        dotnet nuget add source ${{ env.NUGET_SOURCE }} -n github -u ${{ github.actor }} -p ${{ secrets.GITHUB_TOKEN }}
+        dotnet nuget push ${{ env.PROJECT_BIN }}/${{ env.BUILD_CONFIGURATION }}/${{ env.ASSEMBLY_NAME }}.${{ env.NUGET_VERSION }}.nupkg --source "github" --skip-duplicate
+          
+    - name: Publish NuGet.org
       # You may pin to the exact commit or the version.
       # uses: brandedoutcast/publish-nuget@c12b8546b67672ee38ac87bea491ac94a587f7cc
       uses: brandedoutcast/publish-nuget@v2.5.5
       with:
         # Filepath of the project to be packaged, relative to root of repository
-        PROJECT_FILE_PATH: XUnitLogging\XUnitLogging.csproj
+        PROJECT_FILE_PATH: ${{ env.PROJECT_MAIN }}
         # NuGet package id, used for version detection & defaults to project name
         PACKAGE_NAME: tsh.xUnit.Logging
         # Filepath with version info, relative to root of repository & defaults to PROJECT_FILE_PATH
