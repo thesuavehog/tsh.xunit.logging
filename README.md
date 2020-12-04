@@ -12,7 +12,7 @@ provider therein.
 
 **Example:**
 
-```c-sharp
+```csharp
 public class TestBase {
         protected readonly ITestOutputHelper output;
         protected readonly TestServer server;
@@ -56,7 +56,7 @@ appsettings.Tests.json:
 }
 ```
 
-```c-sharp
+```csharp
 public class TestBase {
         protected readonly ITestOutputHelper output;
         protected readonly TestServer server;
