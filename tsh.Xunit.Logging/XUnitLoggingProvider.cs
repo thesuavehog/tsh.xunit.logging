@@ -7,7 +7,7 @@ using Microsoft.Extensions.Logging;
 
 using Xunit.Abstractions;
 
-namespace tsh.XUnit.Logging
+namespace tsh.Xunit.Logging
 {
     /// <summary>
     /// Implementation of <see cref="ILoggerProvider"/> which can be added to any 

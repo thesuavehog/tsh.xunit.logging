@@ -112,3 +112,7 @@ The default log output tries to emulate close to the Microsoft log format:
 {exception}
             => {scope} 
 ```
+
+## Change Log
+
+- 0.1.0 : Initial Release

@@ -6,7 +6,7 @@ using Microsoft.Extensions.Logging;
 
 using Xunit.Abstractions;
 
-namespace tsh.XUnit.Logging
+namespace tsh.Xunit.Logging
 {
     /// <summary>
     /// Implementation of <see cref="ILogger"/> interface to wrap a <see cref="ITestOutputHelper"/> 
